@@ -94,6 +94,8 @@ After deploy visit:
 | Slow startup | ML models warming | Background thread warms models; just wait or hit `/healthz` repeatedly |
 | Missing SECRET_KEY warning | Env var regenerated | Ignore unless rotating sessions matters |
 
+If you prefer staying on Python 3.13+, upgrade scikit-learn to a version that officially supports it (check release notes) and remove or bump the Python pin after testing locally.
+
 ### 7. Redeploy Steps (After Changes)
 1. Commit & push changes.
 2. Render auto deploys (if `autoDeploy: true`).
