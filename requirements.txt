@@ -1,0 +1,14 @@
+# Urban Issue Reporter Dependencies
+Flask==2.3.3
+Werkzeug==2.3.7
+gunicorn==21.2.0
+
+# ML Dependencies for Automation
+scikit-learn==1.3.0
+pandas==2.0.3
+numpy==1.24.3
+joblib==1.3.2
+
+# Optional: For advanced NLP (if needed later)
+# transformers==4.21.0
+# torch==2.0.1

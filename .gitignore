@@ -1,0 +1,41 @@
+# Python / Virtualenv
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment / secrets
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Databases & backups
+urban_issues.db
+urban_issues_backup*.db
+*.sqlite3
+
+# Uploaded user content (keep directory, ignore contents)
+uploads/*
+!uploads/.gitkeep
+
+# Models (keep directory, commit small pkl if needed)
+models/*.pkl
+!models/.gitkeep
+
+# Logs
+*.log
+
+# Bytecode cache
+*.pytest_cache/
+
+# Render build artifacts (if any)
+.eggs/
+build/
+dist/
+
+# Jupyter
+*.ipynb_checkpoints/

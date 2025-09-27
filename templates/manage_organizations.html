@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Organizations - Urban Issue Reporter{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>🏢 Manage Organizations</h2>
+                <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Admin Panel
+                </a>
+            </div>
+
+            <!-- Organizations List -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-building"></i> Organizations</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Organization</th>
+                                            <th>Category</th>
+                                            <th>Description</th>
+                                            <th>Admin</th>
+                                            <th>Staff Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for org in organizations %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ org.name }}</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-info">{{ org.category.replace('_', ' ').title() }}</span>
+                                            </td>
+                                            <td>{{ org.description or 'No description' }}</td>
+                                            <td>
+                                                {% set org_admin = users | selectattr('organization_id', 'equalto', org.id) | selectattr('role', 'equalto', 'org_admin') | first %}
+                                                {% if org_admin %}
+                                                    <span class="text-success">
+                                                        <i class="fas fa-user-tie"></i> {{ org_admin.name }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">
+                                                        <i class="fas fa-user-plus"></i> No Admin Assigned
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set staff_count = users | selectattr('organization_id', 'equalto', org.id) | selectattr('role', 'equalto', 'org_staff') | list | length %}
+                                                <span class="badge badge-secondary">{{ staff_count }} Staff</span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assign Admin/Staff -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-user-plus"></i> Assign Admin/Staff to Organization</h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('assign_admin') }}">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="user_id">Select User</label>
+                                            <select class="form-control" id="user_id" name="user_id" required>
+                                                <option value="">Choose User...</option>
+                                                {% for user in users %}
+                                                    {% if user.role == 'user' %}
+                                                        <option value="{{ user.id }}">{{ user.name }} ({{ user.email }})</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="organization_id">Select Organization</label>
+                                            <select class="form-control" id="organization_id" name="organization_id" required>
+                                                <option value="">Choose Organization...</option>
+                                                {% for org in organizations %}
+                                                    <option value="{{ org.id }}">{{ org.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="role">Select Role</label>
+                                            <select class="form-control" id="role" name="role" required>
+                                                <option value="">Choose Role...</option>
+                                                <option value="org_admin">Organization Admin</option>
+                                                <option value="org_staff">Organization Staff</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>&nbsp;</label>
+                                            <button type="submit" class="btn btn-primary btn-block">
+                                                <i class="fas fa-user-plus"></i> Assign Role
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Role Assignments -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-users"></i> Current Role Assignments</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Organization</th>
+                                            <th>Category</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for user in users %}
+                                            {% if user.role in ['org_admin', 'org_staff'] %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ user.name }}</strong>
+                                                </td>
+                                                <td>{{ user.email }}</td>
+                                                <td>
+                                                    {% if user.role == 'org_admin' %}
+                                                        <span class="badge badge-success">Organization Admin</span>
+                                                    {% elif user.role == 'org_staff' %}
+                                                        <span class="badge badge-info">Organization Staff</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ user.organization_name or 'N/A' }}</td>
+                                                <td>
+                                                    <span class="badge badge-secondary">{{ user.organization_category or 'N/A' }}</span>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

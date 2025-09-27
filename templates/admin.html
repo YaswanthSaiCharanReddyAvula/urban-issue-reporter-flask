@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if current_user.role == 'super_admin' %}
+        Super Admin Panel
+    {% elif current_user.role == 'org_admin' %}
+        {{ current_user.organization_name }} - Admin Panel
+    {% elif current_user.role == 'org_staff' %}
+        {{ current_user.organization_name }} - Staff Panel
+    {% else %}
+        Admin Panel
+    {% endif %} - Urban Issue Reporter
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="margin: 2rem auto;">
+        <div style="text-align: center; margin-bottom: 3rem;">
+            {% if current_user.role == 'super_admin' %}
+                <i class="fas fa-crown" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                <h1>Super Admin Dashboard</h1>
+                <p style="color: #666;">Manage the entire urban issue system</p>
+            {% elif current_user.role == 'org_admin' %}
+                <i class="fas fa-user-tie" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                <h1>{{ current_user.organization_name }} - Admin Dashboard</h1>
+                <p style="color: #666;">Manage {{ current_user.organization_category.replace('_', ' ').title() }} issues</p>
+            {% elif current_user.role == 'org_staff' %}
+                <i class="fas fa-user-cog" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                <h1>{{ current_user.organization_name }} - Staff Dashboard</h1>
+                <p style="color: #666;">Handle {{ current_user.organization_category.replace('_', ' ').title() }} issues</p>
+            {% else %}
+                <i class="fas fa-cogs" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                <h1>Admin Dashboard</h1>
+                <p style="color: #666;">Manage and monitor urban issues</p>
+            {% endif %}
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_issues }}</div>
+                <div class="stat-label">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    {% if current_user.role == 'super_admin' %}
+                        Total Issues
+                    {% else %}
+                        {{ current_user.organization_category.replace('_', ' ').title() }} Issues
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.pending_issues }}</div>
+                <div class="stat-label">
+                    <i class="fas fa-clock"></i> Pending Issues
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.resolved_issues }}</div>
+                <div class="stat-label">
+                    <i class="fas fa-check-circle"></i> Resolved Issues
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_users }}</div>
+                <div class="stat-label">
+                    <i class="fas fa-users"></i> 
+                    {% if current_user.role == 'super_admin' %}
+                        Total Users
+                    {% else %}
+                        Organization Users
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2 style="margin-bottom: 2rem;">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a href="{{ url_for('index', status='pending') }}" class="btn btn-warning">
+                    <i class="fas fa-clock"></i> View Pending Issues
+                </a>
+                <a href="{{ url_for('index', status='in-progress') }}" class="btn" style="background: #a29bfe;">
+                    <i class="fas fa-spinner"></i> View In-Progress Issues
+                </a>
+                <a href="{{ url_for('index', status='resolved') }}" class="btn btn-success">
+                    <i class="fas fa-check-circle"></i> View Resolved Issues
+                </a>
+                <a href="{{ url_for('issues_map') }}" class="btn" style="background: #667eea; color: white;">
+                    <i class="fas fa-map-marked-alt"></i> Issues Map
+                </a>
+                
+                {% if current_user.role == 'super_admin' %}
+                <a href="{{ url_for('manage_organizations') }}" class="btn" style="background: #fd79a8; color: white;">
+                    <i class="fas fa-building"></i> Manage Organizations
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- All Issues Management -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2>
+                    <i class="fas fa-list"></i> All Issues Management ({{ recent_issues|length }})
+                </h2>
+                <div class="issue-filters">
+                    <select id="sortBy" onchange="sortIssues()" class="form-control" style="width: 200px; display: inline-block;">
+                        <option value="date_desc">Latest First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="priority_desc">High Priority First</option>
+                        <option value="priority_asc">Low Priority First</option>
+                        <option value="title_asc">Title A-Z</option>
+                        <option value="title_desc">Title Z-A</option>
+                    </select>
+                    <select id="filterStatus" onchange="filterIssues()" class="form-control" style="width: 150px; display: inline-block; margin-left: 10px;">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <input type="text" id="searchIssues" onkeyup="searchIssues()" placeholder="Search issues..." class="form-control" style="width: 200px; display: inline-block; margin-left: 10px;">
+                </div>
+            </div>
+            
+            {% if recent_issues %}
+            <div style="overflow-x: auto;" id="issuesTableContainer">
+                <table id="issuesTable" style="width: 100%; border-collapse: collapse;" class="sortable-table">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(0)">
+                                Issue <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(1)">
+                                Category <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(2)">
+                                Priority <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(3)">
+                                Status <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(4)">
+                                Reporter <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; cursor: pointer;" onclick="sortTable(5)">
+                                Date <i class="fas fa-sort"></i>
+                            </th>
+                            <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issuesTableBody">
+                        {% for issue in recent_issues %}
+                        <tr style="border-bottom: 1px solid #eee;" class="issue-row" 
+                            data-status="{{ issue.status }}" 
+                            data-priority="{{ issue.priority_score or 0 }}"
+                            data-date="{{ issue.created_at }}"
+                            data-title="{{ issue.title.lower() }}">
+                            <td style="padding: 1rem;">
+                                <div>
+                                    <strong>{{ issue.title }}</strong><br>
+                                    <small style="color: #666;">{{ issue.description[:100] }}...</small>
+                                </div>
+                            </td>
+                            <td style="padding: 1rem;">
+                                <span class="badge badge-{{ issue.category }}">
+                                    {% if issue.category == 'road' %}🛣️ Road
+                                    {% elif issue.category == 'transport' %}🚌 Transport
+                                    {% elif issue.category == 'sanitation' %}🗑️ Sanitation
+                                    {% elif issue.category == 'infrastructure' %}🏗️ Infrastructure
+                                    {% elif issue.category == 'water' %}💧 Water
+                                    {% elif issue.category == 'electricity' %}⚡ Electricity
+                                    {% elif issue.category == 'environment' %}🌱 Environment
+                                    {% else %}📋 Other{% endif %}
+                                </span>
+                            </td>
+                            <td style="padding: 1rem;">
+                                {% if issue.priority_score %}
+                                    {% set priority_score = issue.priority_score %}
+                                    {% if priority_score >= 8.0 %}
+                                        <span class="badge" style="background: #e74c3c; color: white;">
+                                            🚨 Critical ({{ "%.1f"|format(priority_score) }})
+                                        </span>
+                                    {% elif priority_score >= 6.0 %}
+                                        <span class="badge" style="background: #f39c12; color: white;">
+                                            ⚠️ High ({{ "%.1f"|format(priority_score) }})
+                                        </span>
+                                    {% elif priority_score >= 4.0 %}
+                                        <span class="badge" style="background: #f1c40f; color: #333;">
+                                            📋 Medium ({{ "%.1f"|format(priority_score) }})
+                                        </span>
+                                    {% else %}
+                                        <span class="badge" style="background: #95a5a6; color: white;">
+                                            📝 Low ({{ "%.1f"|format(priority_score) }})
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge" style="background: #bdc3c7; color: #333;">
+                                        📊 ML Predicted
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 1rem;">
+                                <span class="badge badge-{{ issue.status }}">
+                                    {% if issue.status == 'pending' %}⏳ Pending
+                                    {% elif issue.status == 'in-progress' %}🔄 In Progress
+                                    {% elif issue.status == 'resolved' %}✅ Resolved
+                                    {% elif issue.status == 'rejected' %}❌ Rejected
+                                    {% else %}{{ issue.status.title() }}{% endif %}
+                                </span>
+                            </td>
+                            <td style="padding: 1rem;">
+                                <i class="fas fa-user"></i> {{ issue.reporter_name or 'Anonymous' }}
+                            </td>
+                            <td style="padding: 1rem;">
+                                <div>
+                                    <strong>{{ issue.created_at[:10] }}</strong><br>
+                                    <small style="color: #666;">{{ issue.created_at[11:16] }}</small>
+                                </div>
+                            </td>
+                            <td style="padding: 1rem;">
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <a href="{{ url_for('issue_detail', issue_id=issue.id) }}" 
+                                       class="btn" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #667eea; color: white;">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div style="text-align: center; padding: 3rem; color: #666;">
+                    <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No issues reported yet.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- System Information -->
+        <div class="card">
+            <h2 style="margin-bottom: 2rem;">
+                <i class="fas fa-info-circle"></i> System Information
+            </h2>
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px;">
+                <p><strong>Resolution Rate:</strong> 
+                    {% if stats.total_issues > 0 %}
+                        {{ "%.1f"|format((stats.resolved_issues / stats.total_issues) * 100) }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </p>
+                <p><strong>Most Common Category:</strong> Analysis in progress</p>
+                <p><strong>ML Priority Model:</strong> 
+                    <span style="color: #27ae60; font-weight: bold;">
+                        <i class="fas fa-robot"></i> AI-Powered Priority Detection Active
+                    </span>
+                </p>
+                <p><strong>System Status:</strong> 
+                    <span style="color: #27ae60; font-weight: bold;">
+                        <i class="fas fa-check-circle"></i> Operational
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sorting and filtering functionality for issues table
+function sortIssues() {
+    const sortBy = document.getElementById('sortBy').value;
+    const table = document.getElementById('issuesTable');
+    const tbody = document.getElementById('issuesTableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr.issue-row'));
+    
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(sortBy) {
+            case 'date_desc':
+                aVal = new Date(a.dataset.date);
+                bVal = new Date(b.dataset.date);
+                return bVal - aVal;
+            case 'date_asc':
+                aVal = new Date(a.dataset.date);
+                bVal = new Date(b.dataset.date);
+                return aVal - bVal;
+            case 'priority_desc':
+                aVal = parseFloat(a.dataset.priority) || 0;
+                bVal = parseFloat(b.dataset.priority) || 0;
+                return bVal - aVal;
+            case 'priority_asc':
+                aVal = parseFloat(a.dataset.priority) || 0;
+                bVal = parseFloat(b.dataset.priority) || 0;
+                return aVal - bVal;
+            case 'title_asc':
+                aVal = a.dataset.title;
+                bVal = b.dataset.title;
+                return aVal.localeCompare(bVal);
+            case 'title_desc':
+                aVal = a.dataset.title;
+                bVal = b.dataset.title;
+                return bVal.localeCompare(aVal);
+            default:
+                return 0;
+        }
+    });
+    
+    // Remove all rows and re-add in sorted order
+    rows.forEach(row => tbody.removeChild(row));
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function filterIssues() {
+    const filterStatus = document.getElementById('filterStatus').value;
+    const rows = document.querySelectorAll('tr.issue-row');
+    
+    rows.forEach(row => {
+        const status = row.dataset.status;
+        if (filterStatus === '' || status === filterStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function searchIssues() {
+    const searchTerm = document.getElementById('searchIssues').value.toLowerCase();
+    const rows = document.querySelectorAll('tr.issue-row');
+    
+    rows.forEach(row => {
+        const title = row.dataset.title;
+        const description = row.cells[0].textContent.toLowerCase();
+        const reporter = row.cells[4].textContent.toLowerCase();
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm) || reporter.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Generic table sorting function
+function sortTable(columnIndex) {
+    const table = document.getElementById('issuesTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr.issue-row'));
+    
+    // Toggle sort direction
+    const currentSort = table.dataset.sortColumn;
+    const currentDir = table.dataset.sortDirection || 'asc';
+    const newDir = (currentSort == columnIndex && currentDir === 'asc') ? 'desc' : 'asc';
+    
+    table.dataset.sortColumn = columnIndex;
+    table.dataset.sortDirection = newDir;
+    
+    rows.sort((a, b) => {
+        const aVal = a.cells[columnIndex].textContent.trim();
+        const bVal = b.cells[columnIndex].textContent.trim();
+        
+        // Handle numeric values (priority scores)
+        if (columnIndex === 2) {
+            const aNum = parseFloat(aVal.match(/\d+\.?\d*/)?.[0] || 0);
+            const bNum = parseFloat(bVal.match(/\d+\.?\d*/)?.[0] || 0);
+            return newDir === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Handle dates
+        if (columnIndex === 5) {
+            const aDate = new Date(aVal);
+            const bDate = new Date(bVal);
+            return newDir === 'asc' ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Handle text
+        const result = aVal.localeCompare(bVal);
+        return newDir === 'asc' ? result : -result;
+    });
+    
+    // Update DOM
+    rows.forEach(row => tbody.removeChild(row));
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Update sort indicators
+    const headers = table.querySelectorAll('th i.fas');
+    headers.forEach(icon => icon.className = 'fas fa-sort');
+    
+    const activeHeader = table.querySelectorAll('th')[columnIndex].querySelector('i');
+    if (activeHeader) {
+        activeHeader.className = newDir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    }
+}
+</script>
+{% endblock %}

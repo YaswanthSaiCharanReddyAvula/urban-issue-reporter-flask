@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive Demo - Urban Issue Reporter{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Demo Header -->
+    <div style="text-align: center; margin: 2rem 0;">
+        <h1><i class="fas fa-play-circle" style="color: #667eea;"></i> Interactive Demo</h1>
+        <p style="color: #666; font-size: 1.1rem;">Learn how to report an issue by following along</p>
+        <div style="margin: 1rem 0;">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Demo Progress Bar -->
+    <div class="demo-progress" style="margin-bottom: 2rem;">
+        <div class="progress-container" style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="progressBar" class="progress-bar" style="background: #667eea; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+        </div>
+        <div style="text-align: center; margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+            Step <span id="currentStep">1</span> of <span id="totalSteps">7</span>
+        </div>
+    </div>
+
+    <!-- Demo Container -->
+    <div id="demoContainer" class="card" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+        
+        <!-- Step 1: Welcome -->
+        <div id="step1" class="demo-step" style="text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🏙️</div>
+            <h2>Welcome to the Issue Reporting Demo!</h2>
+            <p style="font-size: 1.1rem; margin: 1.5rem 0;">
+                You'll learn how to report urban issues like potholes, broken streetlights, or sanitation problems.
+                This is a hands-on tutorial - no reading required!
+            </p>
+            <button onclick="nextStep()" class="btn btn-primary" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                <i class="fas fa-arrow-right"></i> Start Demo
+            </button>
+        </div>
+
+        <!-- Step 2: Issue Type Selection -->
+        <div id="step2" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-tags"></i> Step 1: Choose Issue Type</h3>
+            <p>Click on the type of issue you want to report:</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">
+                <button onclick="selectCategory('road')" class="demo-category-btn" data-category="road">
+                    <i class="fas fa-road" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                    <div>Road Issues</div>
+                    <small>Potholes, damaged roads</small>
+                </button>
+                <button onclick="selectCategory('electricity')" class="demo-category-btn" data-category="electricity">
+                    <i class="fas fa-lightbulb" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                    <div>Electricity</div>
+                    <small>Street lights, power issues</small>
+                </button>
+                <button onclick="selectCategory('water')" class="demo-category-btn" data-category="water">
+                    <i class="fas fa-tint" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                    <div>Water Issues</div>
+                    <small>Leaks, water supply</small>
+                </button>
+                <button onclick="selectCategory('sanitation')" class="demo-category-btn" data-category="sanitation">
+                    <i class="fas fa-trash" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                    <div>Sanitation</div>
+                    <small>Waste, cleanliness</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Title Input -->
+        <div id="step3" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-heading"></i> Step 2: Describe Your Issue</h3>
+            <p>Give your issue a clear, brief title:</p>
+            <div style="margin: 2rem 0;">
+                <label for="demoTitle" style="display: block; font-weight: bold; margin-bottom: 0.5rem;">Issue Title:</label>
+                <input type="text" id="demoTitle" class="form-control" placeholder="e.g., Broken streetlight on Main Street" style="font-size: 1.1rem; padding: 1rem;">
+                <small style="color: #666; display: block; margin-top: 0.5rem;">
+                    💡 Tip: Be specific about the location and problem
+                </small>
+            </div>
+            <button onclick="validateTitle()" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> Continue
+            </button>
+        </div>
+
+        <!-- Step 4: Description -->
+        <div id="step4" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-align-left"></i> Step 3: Add Details</h3>
+            <p>Provide more details about the issue:</p>
+            <div style="margin: 2rem 0;">
+                <label for="demoDescription" style="display: block; font-weight: bold; margin-bottom: 0.5rem;">Description:</label>
+                <textarea id="demoDescription" class="form-control" rows="4" placeholder="Describe the issue in detail..." style="font-size: 1rem; padding: 1rem;"></textarea>
+                <small style="color: #666; display: block; margin-top: 0.5rem;">
+                    💡 Include when you noticed it and how it affects you
+                </small>
+            </div>
+            <button onclick="validateDescription()" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> Continue
+            </button>
+        </div>
+
+        <!-- Step 5: Location -->
+        <div id="step5" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-map-marker-alt"></i> Step 4: Set Location</h3>
+            <p>Click on the map to mark where the issue is located:</p>
+            <div style="margin: 2rem 0;">
+                <div id="demoMap" style="height: 400px; background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 8px; position: relative; cursor: crosshair;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666;">
+                        <i class="fas fa-map" style="font-size: 3rem; margin-bottom: 1rem; color: #ccc;"></i>
+                        <div>Click anywhere on this demo map</div>
+                        <small>In the real app, you'll use an interactive map</small>
+                    </div>
+                    <div id="demoMarker" style="display: none; position: absolute; color: #e74c3c; font-size: 2rem;">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                </div>
+                <div id="locationInfo" style="margin-top: 1rem; padding: 1rem; background: #e8f5e8; border-radius: 4px; display: none;">
+                    <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                    <strong>Location set!</strong> Address: <span id="demoAddress"></span>
+                </div>
+            </div>
+            <button id="locationBtn" onclick="nextStep()" class="btn btn-primary" disabled>
+                <i class="fas fa-arrow-right"></i> Continue
+            </button>
+        </div>
+
+        <!-- Step 6: Photo Upload -->
+        <div id="step6" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-camera"></i> Step 5: Add Photo (Optional)</h3>
+            <p>A photo helps authorities understand the issue better:</p>
+            <div style="margin: 2rem 0;">
+                <div class="demo-upload-area" onclick="simulatePhotoUpload()" style="border: 2px dashed #ccc; padding: 3rem; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                    <div id="uploadContent">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+                        <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">Click to upload a photo</div>
+                        <small style="color: #666;">or drag and drop an image here</small>
+                    </div>
+                    <div id="uploadedContent" style="display: none;">
+                        <i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;"></i>
+                        <div style="font-size: 1.1rem; color: #28a745;">Photo uploaded successfully!</div>
+                        <small style="color: #666;">issue_photo.jpg</small>
+                    </div>
+                </div>
+            </div>
+            <button onclick="nextStep()" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> Continue
+            </button>
+            <button onclick="nextStep()" class="btn btn-secondary" style="margin-left: 0.5rem;">
+                <i class="fas fa-skip-forward"></i> Skip Photo
+            </button>
+        </div>
+
+        <!-- Step 7: Review & Submit -->
+        <div id="step7" class="demo-step" style="display: none;">
+            <h3><i class="fas fa-check"></i> Step 6: Review & Submit</h3>
+            <p>Review your report before submitting:</p>
+            <div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; margin: 2rem 0;">
+                <h4 style="color: #333; margin-bottom: 1rem;">Issue Summary</h4>
+                <div style="display: grid; gap: 1rem;">
+                    <div><strong>Category:</strong> <span id="reviewCategory"></span></div>
+                    <div><strong>Title:</strong> <span id="reviewTitle"></span></div>
+                    <div><strong>Description:</strong> <span id="reviewDescription"></span></div>
+                    <div><strong>Location:</strong> <span id="reviewLocation"></span></div>
+                    <div><strong>Photo:</strong> <span id="reviewPhoto">Uploaded ✓</span></div>
+                </div>
+            </div>
+            <button onclick="simulateSubmit()" class="btn btn-success" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                <i class="fas fa-paper-plane"></i> Submit Issue Report
+            </button>
+        </div>
+
+        <!-- Step 8: Success -->
+        <div id="step8" class="demo-step" style="display: none; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem; color: #28a745;">🎉</div>
+            <h2 style="color: #28a745;">Issue Reported Successfully!</h2>
+            <p style="font-size: 1.1rem; margin: 1.5rem 0;">
+                Your issue has been submitted and will be reviewed by the relevant department.
+                You'll receive email updates on the progress!
+            </p>
+            <div style="background: #d4edda; padding: 2rem; border-radius: 8px; margin: 2rem 0;">
+                <h4 style="color: #155724;">What happens next?</h4>
+                <ul style="text-align: left; color: #155724; margin: 1rem 0;">
+                    <li>The relevant department will review your issue</li>
+                    <li>You'll get email notifications about status changes</li>
+                    <li>You can track progress on this website</li>
+                    <li>You can add comments or additional information</li>
+                </ul>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button onclick="restartDemo()" class="btn btn-primary">
+                    <i class="fas fa-redo"></i> Try Demo Again
+                </button>
+                <a href="{{ url_for('register') }}" class="btn btn-success">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> Back to Home
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Demo Styles -->
+<style>
+.demo-category-btn {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.demo-category-btn:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+    transform: translateY(-2px);
+}
+
+.demo-category-btn.selected {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+.demo-upload-area:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+</style>
+
+<!-- Demo JavaScript -->
+<script>
+let currentStep = 1;
+let totalSteps = 7;
+let demoData = {
+    category: '',
+    title: '',
+    description: '',
+    location: null,
+    hasPhoto: false
+};
+
+function updateProgress() {
+    const progress = ((currentStep - 1) / totalSteps) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('currentStep').textContent = currentStep;
+    document.getElementById('totalSteps').textContent = totalSteps;
+}
+
+function showStep(stepNum) {
+    // Hide all steps
+    for (let i = 1; i <= totalSteps + 1; i++) {
+        const step = document.getElementById('step' + i);
+        if (step) step.style.display = 'none';
+    }
+    
+    // Show current step
+    const currentStepElement = document.getElementById('step' + stepNum);
+    if (currentStepElement) {
+        currentStepElement.style.display = 'block';
+    }
+    
+    updateProgress();
+}
+
+function nextStep() {
+    if (currentStep <= totalSteps) {
+        currentStep++;
+        showStep(currentStep);
+    }
+}
+
+function selectCategory(category) {
+    demoData.category = category;
+    
+    // Update button styles
+    document.querySelectorAll('.demo-category-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.querySelector(`[data-category="${category}"]`).classList.add('selected');
+    
+    // Auto-advance after selection
+    setTimeout(() => {
+        nextStep();
+    }, 500);
+}
+
+function validateTitle() {
+    const title = document.getElementById('demoTitle').value.trim();
+    if (title.length < 5) {
+        alert('Please enter a more descriptive title (at least 5 characters)');
+        return;
+    }
+    demoData.title = title;
+    nextStep();
+}
+
+function validateDescription() {
+    const description = document.getElementById('demoDescription').value.trim();
+    if (description.length < 10) {
+        alert('Please provide more details (at least 10 characters)');
+        return;
+    }
+    demoData.description = description;
+    nextStep();
+}
+
+// Map click simulation
+document.addEventListener('DOMContentLoaded', function() {
+    const demoMap = document.getElementById('demoMap');
+    if (demoMap) {
+        demoMap.addEventListener('click', function(e) {
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const marker = document.getElementById('demoMarker');
+            marker.style.left = x + 'px';
+            marker.style.top = y + 'px';
+            marker.style.display = 'block';
+            
+            // Simulate getting address
+            const addresses = [
+                '123 Main Street, Downtown',
+                '456 Oak Avenue, Central District',
+                '789 Pine Road, North Side',
+                '321 Elm Street, South Ward'
+            ];
+            const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
+            
+            document.getElementById('demoAddress').textContent = randomAddress;
+            document.getElementById('locationInfo').style.display = 'block';
+            document.getElementById('locationBtn').disabled = false;
+            
+            demoData.location = { x, y, address: randomAddress };
+        });
+    }
+});
+
+function simulatePhotoUpload() {
+    const uploadContent = document.getElementById('uploadContent');
+    const uploadedContent = document.getElementById('uploadedContent');
+    
+    uploadContent.style.display = 'none';
+    uploadedContent.style.display = 'block';
+    demoData.hasPhoto = true;
+}
+
+function simulateSubmit() {
+    // Update review section
+    document.getElementById('reviewCategory').textContent = demoData.category.charAt(0).toUpperCase() + demoData.category.slice(1);
+    document.getElementById('reviewTitle').textContent = demoData.title;
+    document.getElementById('reviewDescription').textContent = demoData.description;
+    document.getElementById('reviewLocation').textContent = demoData.location ? demoData.location.address : 'Demo Location';
+    document.getElementById('reviewPhoto').textContent = demoData.hasPhoto ? 'Uploaded ✓' : 'None';
+    
+    // Simulate submission delay
+    const btn = event.target;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        nextStep();
+    }, 2000);
+}
+
+function restartDemo() {
+    currentStep = 1;
+    demoData = { category: '', title: '', description: '', location: null, hasPhoto: false };
+    
+    // Reset form fields
+    document.getElementById('demoTitle').value = '';
+    document.getElementById('demoDescription').value = '';
+    
+    // Reset photo upload
+    document.getElementById('uploadContent').style.display = 'block';
+    document.getElementById('uploadedContent').style.display = 'none';
+    
+    // Reset location
+    document.getElementById('demoMarker').style.display = 'none';
+    document.getElementById('locationInfo').style.display = 'none';
+    document.getElementById('locationBtn').disabled = true;
+    
+    // Reset category selection
+    document.querySelectorAll('.demo-category-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    showStep(1);
+}
+
+// Initialize
+updateProgress();
+</script>
+
+{% endblock %}

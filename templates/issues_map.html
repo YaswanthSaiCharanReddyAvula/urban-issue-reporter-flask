@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if current_user.role == 'super_admin' %}
+        All Issues Map - Super Admin
+    {% elif current_user.role == 'org_admin' %}
+        {{ current_user.organization_category.replace('_', ' ').title() }} Issues Map - {{ current_user.organization_name }}
+    {% elif current_user.role == 'org_staff' %}
+        {{ current_user.organization_category.replace('_', ' ').title() }} Issues Map - {{ current_user.organization_name }}
+    {% else %}
+        Issues Map - Admin Panel
+    {% endif %} - Urban Issue Reporter
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="margin: 2rem auto;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 style="display: flex; align-items: center; gap: 1rem; margin: 0;">
+                    <i class="fas fa-map-marked-alt" style="color: #667eea;"></i>
+                    {% if current_user.role == 'super_admin' %}
+                        All Issues Map
+                    {% else %}
+                        {{ current_user.organization_category.replace('_', ' ').title() }} Issues Map
+                    {% endif %}
+                </h1>
+                <p style="color: #666; margin: 0.5rem 0;">
+                    {% if current_user.role == 'super_admin' %}
+                        View all reported issues across the city
+                    {% else %}
+                        View {{ current_user.organization_category.replace('_', ' ').lower() }} issues managed by {{ current_user.organization_name }}
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{{ url_for('admin_panel') }}" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <!-- Map Statistics -->
+        <div class="map-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div class="stat-card-mini" style="background: #667eea; color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">{{ issues|length }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">
+                    {% if current_user.role == 'super_admin' %}
+                        Total Issues
+                    {% else %}
+                        {{ current_user.organization_category.replace('_', ' ').title() }} Issues
+                    {% endif %}
+                </div>
+            </div>
+            <div class="stat-card-mini" style="background: #f39c12; color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">{{ issues|selectattr('status', 'equalto', 'pending')|list|length }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">Pending</div>
+            </div>
+            <div class="stat-card-mini" style="background: #3498db; color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">{{ issues|selectattr('status', 'equalto', 'in-progress')|list|length }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">In Progress</div>
+            </div>
+            <div class="stat-card-mini" style="background: #27ae60; color: white; padding: 1rem; border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold;">{{ issues|selectattr('status', 'equalto', 'resolved')|list|length }}</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">Resolved</div>
+            </div>
+        </div>
+        
+        <!-- Map Filters -->
+        <div class="map-filters card" style="margin-bottom: 2rem; padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem;"><i class="fas fa-filter"></i> Filter Issues on Map</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div>
+                    <label for="categoryFilter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Category:</label>
+                    <select id="categoryFilter" class="form-control" onchange="filterMarkers()">
+                        <option value="">All Categories</option>
+                        <option value="road">🛣️ Road</option>
+                        <option value="transport">🚌 Transport</option>
+                        <option value="sanitation">🗑️ Sanitation</option>
+                        <option value="infrastructure">🏗️ Infrastructure</option>
+                        <option value="water">💧 Water</option>
+                        <option value="electricity">⚡ Electricity</option>
+                        <option value="environment">🌱 Environment</option>
+                        <option value="other">📋 Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="statusFilter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Status:</label>
+                    <select id="statusFilter" class="form-control" onchange="filterMarkers()">
+                        <option value="">All Status</option>
+                        <option value="pending">⏳ Pending</option>
+                        <option value="in-progress">🔄 In Progress</option>
+                        <option value="resolved">✅ Resolved</option>
+                        <option value="rejected">❌ Rejected</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="priorityFilter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Priority:</label>
+                    <select id="priorityFilter" class="form-control" onchange="filterMarkers()">
+                        <option value="">All Priorities</option>
+                        <option value="low">🟢 Low</option>
+                        <option value="medium">🟡 Medium</option>
+                        <option value="high">🟠 High</option>
+                        <option value="urgent">🔴 Urgent</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: end;">
+                    <button onclick="clearFilters()" class="btn" style="width: 100%;">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Issues Map -->
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">
+                <i class="fas fa-map"></i> Interactive Issues Map
+                <span id="visibleCount" style="font-size: 0.8rem; color: #666; font-weight: normal;"></span>
+            </h3>
+            <div id="issuesMap" style="height: 600px; width: 100%; border-radius: 15px; overflow: hidden;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Issues data from backend
+const issuesData = {{ issues | tojson }};
+
+// Map instance
+let map;
+let markersGroup;
+
+// Category icons and colors
+const categoryConfig = {
+    'road': { icon: '🛣️', color: '#fdcb6e' },
+    'transport': { icon: '🚌', color: '#9b59b6' },
+    'sanitation': { icon: '🗑️', color: '#00b894' },
+    'infrastructure': { icon: '🏗️', color: '#6c5ce7' },
+    'water': { icon: '💧', color: '#0984e3' },
+    'electricity': { icon: '⚡', color: '#f39c12' },
+    'environment': { icon: '🌱', color: '#27ae60' },
+    'other': { icon: '📋', color: '#95a5a6' }
+};
+
+const statusConfig = {
+    'pending': { color: '#f39c12', icon: '⏳' },
+    'in-progress': { color: '#3498db', icon: '🔄' },
+    'resolved': { color: '#27ae60', icon: '✅' },
+    'rejected': { color: '#e74c3c', icon: '❌' }
+};
+
+// Initialize map
+function initMap() {
+    // Create map centered on first issue or default location
+    const defaultLat = issuesData.length > 0 ? issuesData[0].latitude : 40.7128;
+    const defaultLng = issuesData.length > 0 ? issuesData[0].longitude : -74.0060;
+    
+    map = L.map('issuesMap').setView([defaultLat, defaultLng], 12);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Create marker group
+    markersGroup = L.layerGroup().addTo(map);
+    
+    // Add all issue markers
+    addAllMarkers();
+    
+    // Fit map to show all markers if issues exist
+    if (issuesData.length > 0) {
+        const group = new L.featureGroup(markersGroup.getLayers());
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+    
+    updateVisibleCount();
+}
+
+// Add all markers to the map
+function addAllMarkers() {
+    markersGroup.clearLayers();
+    
+    issuesData.forEach(issue => {
+        const marker = createIssueMarker(issue);
+        markersGroup.addLayer(marker);
+    });
+}
+
+// Create marker for an issue
+function createIssueMarker(issue) {
+    const categoryInfo = categoryConfig[issue.category] || categoryConfig['other'];
+    const statusInfo = statusConfig[issue.status] || statusConfig['pending'];
+    
+    // Create custom icon
+    const iconHtml = `
+        <div style="
+            background: ${statusInfo.color}; 
+            color: white; 
+            width: 30px; 
+            height: 30px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 14px;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        ">
+            ${categoryInfo.icon}
+        </div>
+    `;
+    
+    const customIcon = L.divIcon({
+        html: iconHtml,
+        className: 'custom-marker',
+        iconSize: [36, 36],
+        iconAnchor: [18, 36]
+    });
+    
+    const marker = L.marker([issue.latitude, issue.longitude], { icon: customIcon });
+    
+    // Create popup content
+    const popupContent = `
+        <div style="max-width: 300px;">
+            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 1.1rem;">${issue.title}</h3>
+            
+            <div style="margin-bottom: 10px;">
+                <span style="background: ${categoryInfo.color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">
+                    ${categoryInfo.icon} ${issue.category.charAt(0).toUpperCase() + issue.category.slice(1)}
+                </span>
+                
+                <span style="background: ${statusInfo.color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px;">
+                    ${statusInfo.icon} ${issue.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </span>
+            </div>
+            
+            <p style="margin: 10px 0; color: #555; font-size: 0.9rem;">
+                ${issue.description.length > 100 ? issue.description.substring(0, 100) + '...' : issue.description}
+            </p>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 10px; font-size: 0.8rem; color: #777;">
+                <div><strong>📍 Location:</strong> ${issue.address}</div>
+                <div><strong>👤 Reporter:</strong> ${issue.reporter_name || 'Anonymous'}</div>
+                <div><strong>📊 Priority:</strong> ${issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)}</div>
+                <div><strong>👍 Upvotes:</strong> ${issue.upvotes}</div>
+                <div><strong>📅 Date:</strong> ${issue.created_at.substring(0, 10)}</div>
+            </div>
+            
+            <div style="margin-top: 10px; text-align: center;">
+                <a href="/issue/${issue.id}" target="_blank" style="
+                    background: #667eea; 
+                    color: white; 
+                    padding: 8px 16px; 
+                    text-decoration: none; 
+                    border-radius: 6px; 
+                    font-size: 0.9rem;
+                    display: inline-block;
+                ">
+                    <i class="fas fa-eye"></i> View Details
+                </a>
+            </div>
+        </div>
+    `;
+    
+    marker.bindPopup(popupContent);
+    
+    // Store issue data on marker for filtering
+    marker.issueData = issue;
+    
+    return marker;
+}
+
+// Filter markers based on selected criteria
+function filterMarkers() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    
+    markersGroup.eachLayer(marker => {
+        const issue = marker.issueData;
+        let visible = true;
+        
+        if (categoryFilter && issue.category !== categoryFilter) visible = false;
+        if (statusFilter && issue.status !== statusFilter) visible = false;
+        if (priorityFilter && issue.priority !== priorityFilter) visible = false;
+        
+        if (visible) {
+            marker.addTo(markersGroup);
+        } else {
+            markersGroup.removeLayer(marker);
+        }
+    });
+    
+    updateVisibleCount();
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('priorityFilter').value = '';
+    
+    addAllMarkers();
+    updateVisibleCount();
+}
+
+// Update visible markers count
+function updateVisibleCount() {
+    const visibleCount = markersGroup.getLayers().length;
+    document.getElementById('visibleCount').textContent = `(${visibleCount} of ${issuesData.length} issues shown)`;
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    if (issuesData.length > 0) {
+        initMap();
+    } else {
+        document.getElementById('issuesMap').innerHTML = `
+            <div style="
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                height: 100%; 
+                color: #666; 
+                flex-direction: column;
+                background: #f8f9fa;
+            ">
+                <i class="fas fa-map" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <h3>No Issues to Display</h3>
+                <p>There are currently no issues reported with valid location data.</p>
+            </div>
+        `;
+    }
+});
+</script>
+{% endblock %}
